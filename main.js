@@ -24,73 +24,54 @@ const pallet = {
   15: "#ffffff",
 };
 
-const SIZE = 64;
+const SIZE = 16;
 const CANVAS_SIZE = 256;
 const PIXEL_SIZE = CANVAS_SIZE / SIZE;
 const RATIO = 16 / SIZE;
 
 const data = {
   expr: "x y +",
-}
+};
 
-// expr is a string that contains instructions to draw a pixel
-// x and y push x and y coordinates to the stack
-// t push the time to the stack
-// +, -, *, /, %, ^, & and | are arithmetic operators
-// 0-F push a number to the stack
-// S, C, T are math functions
-//
-// this function returns the color of the pixel
-function _eval(expr, x, y, t) {
+const lookup = {
+  x: (x, y, t, i, s) => [...s, x * RATIO],
+  y: (x, y, t, i, s) => [...s, y * RATIO],
+  t: (x, y, t, i, s) => [...s, t],
+  i: (x, y, t, i, s) => [...s, i],
+  "+": (x, y, t, i, [a, b, ...s]) => [...s, a + b],
+  "-": (x, y, t, i, [a, b, ...s]) => [...s, a - b],
+  "*": (x, y, t, i, [a, b, ...s]) => [...s, a * b],
+  "/": (x, y, t, i, [a, b, ...s]) => [...s, a / b],
+  "%": (x, y, t, i, [a, b, ...s]) => [...s, a % b],
+  "&": (x, y, t, i, [a, b, ...s]) => [...s, a & b],
+  "|": (x, y, t, i, [a, b, ...s]) => [...s, a | b],
+  "^": (x, y, t, i, [a, b, ...s]) => [...s, a ^ b],
+  S: (x, y, t, i, [a, ...s]) => [...s, Math.sin(a)],
+  C: (x, y, t, i, [a, ...s]) => [...s, Math.cos(a)],
+  T: (x, y, t, i, [a, ...s]) => [...s, Math.tan(a)],
+  " ": (x, y, t, i, s) => s,
+  0: (x, y, t, i, s) => [...s, 0],
+  1: (x, y, t, i, s) => [...s, 1],
+  2: (x, y, t, i, s) => [...s, 2],
+  3: (x, y, t, i, s) => [...s, 3],
+  4: (x, y, t, i, s) => [...s, 4],
+  5: (x, y, t, i, s) => [...s, 5],
+  6: (x, y, t, i, s) => [...s, 6],
+  7: (x, y, t, i, s) => [...s, 7],
+  8: (x, y, t, i, s) => [...s, 8],
+  9: (x, y, t, i, s) => [...s, 9],
+  a: (x, y, t, i, s) => [...s, 10],
+  b: (x, y, t, i, s) => [...s, 11],
+  c: (x, y, t, i, s) => [...s, 12],
+  d: (x, y, t, i, s) => [...s, 13],
+  e: (x, y, t, i, s) => [...s, 14],
+  f: (x, y, t, i, s) => [...s, 15],
+};
+
+function _eval(expr, x, y, t, i) {
   return [...expr].reduce((stack, token) => {
-    switch (token) {
-      case "x":
-        stack.push(x * RATIO);
-        break;
-      case "y":
-        stack.push(y * RATIO);
-        break;
-      case "t":
-        stack.push(t / 1000);
-        break;
-      case "+":
-        stack.push(stack.pop() + stack.pop());
-        break;
-      case "-":
-        stack.push(stack.pop() - stack.pop());
-        break;
-      case "*":
-        stack.push(stack.pop() * stack.pop());
-        break;
-      case "/":
-        stack.push(stack.pop() / stack.pop());
-        break;
-      case "%":
-        stack.push(stack.pop() % stack.pop());
-        break;
-      case "&":
-        stack.push(stack.pop() & stack.pop());
-        break;
-      case "|":
-        stack.push(stack.pop() | stack.pop());
-        break;
-      case "^":
-        stack.push(stack.pop() ^ stack.pop());
-      case "S":
-        stack.push(Math.sin(stack.pop()));
-      case "C":
-        stack.push(Math.cos(stack.pop()));
-      case "T":
-        stack.push(Math.tan(stack.pop()));
-
-      case " ":
-        break;
-      default:
-        stack.push(parseInt(token, 16));
-    } 
-
-    return stack;
-  }, []).pop();
+    return lookup[token]?.(x, y, t, i, stack);
+  }, []);
 }
 
 function render(t) {
