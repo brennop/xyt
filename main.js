@@ -2,7 +2,7 @@ import "./style.css";
 
 const canvas = document.querySelector(".canvas");
 const context = canvas.getContext("2d");
-const debug = document.querySelector(".debug");
+const input = document.querySelector(".input");
 
 // define a 16 colors palette
 const pallet = [
@@ -29,8 +29,17 @@ const CANVAS_SIZE = 256;
 const PIXEL_SIZE = CANVAS_SIZE / SIZE;
 const RATIO = 16 / SIZE;
 
+const url = new URL(window.location);
+let expr = url.pathname.slice(1, 24);
+if (!expr) {
+  window.history.pushState({}, "", "/xy+");
+  expr = "xy+";
+}
+
+input.value = expr;
+
 const data = {
-  expr: "x y +",
+  expr,
 };
 
 const lookup = {
@@ -101,8 +110,6 @@ function render(t) {
 
   requestAnimationFrame(render);
 }
-
-const input = document.querySelector(".input");
 
 // rerender on input change
 input.addEventListener("input", () => {

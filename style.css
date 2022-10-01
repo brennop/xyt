@@ -17,9 +17,14 @@ body {
   width: min-content;
 }
 
+canvas {
+  box-shadow: 0 0 16px 0px #ccc;
+}
+
 .input {
   width: 100%;
   padding: 10px;
   border: 1px solid #ddd;
   margin: 10px;
+  font-family: monospace;
 }
