@@ -140,34 +140,19 @@ canvas.addEventListener("click", () => {
 
 const qrScanner = new QrScanner(
   video,
-  (result) => {
-    const { cornerPoints, data: expr } = result;
-    // position canvas on top of the QR code
-    // the video feed is mirrored, so we need to flip the x coordinates
-    const [topLeft, topRight, bottomRight, bottomLeft] = cornerPoints;
-
-    const width = Math.hypot(
-      topRight.x - topLeft.x,
-      topRight.y - topLeft.y
-    );
-    const height = Math.hypot(
-      bottomRight.x - topRight.x,
-      bottomRight.y - topRight.y
-    );
-
-    const angle = Math.atan2(
-      topRight.y - topLeft.y,
-      topRight.x - topLeft.x
-    );
-
-    const screenW = window.innerWidth;
-    const screenH = window.innerHeight;
-
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-    canvas.style.transform = `translate(${screenW/2 - topLeft.x - width/2}px, ${- screenH/2 + topLeft.y + height/2}px) rotate(${-angle}rad)`;
+  ({ cornerPoints, data: expr }) => {
+    const { height, width } = video.getBoundingClientRect();
+    // position the canvas over the video
+    const [p1, p2, p3, p4] = cornerPoints.map(({ x, y }) => [width/2 - x, y - height/2]);
+    const [x1, y1] = p1;
+    const [x2, y2] = p2;
+    const [x3, y3] = p3;
+    const [x4, y4] = p4;
     
-
+    canvas.style.transform = `matrix(${(x2 - x1) / CANVAS_SIZE}, ${(y2 - y1) / CANVAS_SIZE}, ${(x4 - x1) / CANVAS_SIZE}, ${(y4 - y1) / CANVAS_SIZE}, ${x1}, ${y1})`;
+    canvas.style.width = `${CANVAS_SIZE}px`;
+    canvas.style.height = `${CANVAS_SIZE}px`;
+    
     // update expression
     data.expr = expr;
   },
