@@ -1,4 +1,5 @@
 import "./style.css";
+import QRCode from "qrcode";
 
 const canvas = document.querySelector(".canvas");
 const context = canvas.getContext("2d");
@@ -41,6 +42,8 @@ input.value = expr;
 const data = {
   expr,
 };
+
+let renderer = "art";
 
 const lookup = {
   x: (s, { x }) => [x * RATIO, ...s],
@@ -99,13 +102,25 @@ function _eval(expr, x, y, t, i) {
 }
 
 function render(t) {
-  for (let i = 0; i < SIZE; i++) {
-    for (let j = 0; j < SIZE; j++) {
-      const [value] = _eval(data.expr, i, j, t, i * SIZE + j);
-      const color = pallet[Math.floor(value) & 0xf];
-      context.fillStyle = color;
-      context.fillRect(i * PIXEL_SIZE, j * PIXEL_SIZE, PIXEL_SIZE, PIXEL_SIZE);
+  if (renderer === "art") {
+    for (let i = 0; i < SIZE; i++) {
+      for (let j = 0; j < SIZE; j++) {
+        const [value] = _eval(data.expr, i, j, t, i * SIZE + j);
+        const color = pallet[Math.floor(value) & 0xf];
+        context.fillStyle = color;
+        context.fillRect(
+          i * PIXEL_SIZE,
+          j * PIXEL_SIZE,
+          PIXEL_SIZE,
+          PIXEL_SIZE
+        );
+      }
     }
+  } else if (renderer === "qrcode") {
+    QRCode.toCanvas(canvas, data.expr, {
+      margin: 0,
+      width: CANVAS_SIZE,
+    });
   }
 
   requestAnimationFrame(render);
@@ -114,6 +129,10 @@ function render(t) {
 // rerender on input change
 input.addEventListener("input", () => {
   data.expr = input.value;
+});
+
+canvas.addEventListener("click", () => {
+  renderer = renderer === "art" ? "qrcode" : "art";
 });
 
 requestAnimationFrame(render);
