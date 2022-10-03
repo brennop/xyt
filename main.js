@@ -1,9 +1,12 @@
 import "./style.css";
 import QRCode from "qrcode";
 
+import QrScanner from "qr-scanner";
+
 const canvas = document.querySelector(".canvas");
 const context = canvas.getContext("2d");
 const input = document.querySelector(".input");
+const video = document.querySelector("video");
 
 // define a 16 colors palette
 const pallet = [
@@ -134,5 +137,50 @@ input.addEventListener("input", () => {
 canvas.addEventListener("click", () => {
   renderer = renderer === "art" ? "qrcode" : "art";
 });
+
+const qrScanner = new QrScanner(
+  video,
+  (result) => {
+    const { cornerPoints, data: expr } = result;
+    // position canvas on top of the QR code
+    // the video feed is mirrored, so we need to flip the x coordinates
+    const [topLeft, topRight, bottomRight, bottomLeft] = cornerPoints;
+
+    const width = Math.hypot(
+      topRight.x - topLeft.x,
+      topRight.y - topLeft.y
+    );
+    const height = Math.hypot(
+      bottomRight.x - topRight.x,
+      bottomRight.y - topRight.y
+    );
+
+    const angle = Math.atan2(
+      topRight.y - topLeft.y,
+      topRight.x - topLeft.x
+    );
+
+    const screenW = window.innerWidth;
+    const screenH = window.innerHeight;
+
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
+    canvas.style.transform = `translate(${screenW/2 - topLeft.x - width/2}px, ${- screenH/2 + topLeft.y + height/2}px) rotate(${-angle}rad)`;
+    
+
+    // update expression
+    data.expr = expr;
+  },
+  {
+    returnDetailedScanResult: true,
+  }
+);
+
+video.addEventListener("click", () => {
+  qrScanner.stop();
+  video.style.display = "none";
+});
+
+qrScanner.start();
 
 requestAnimationFrame(render);
