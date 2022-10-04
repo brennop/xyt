@@ -1,9 +1,11 @@
 import "./style.css";
 import QRCode from "qrcode";
 
-const canvas = document.querySelector(".canvas");
-const context = canvas.getContext("2d");
+const artCanvas = document.querySelector(".canvas");
+const context = artCanvas.getContext("2d");
 const input = document.querySelector(".input");
+
+import jsQR from "jsqr";
 
 // define a 16 colors palette
 const pallet = [
@@ -43,7 +45,7 @@ const data = {
   expr,
 };
 
-let renderer = "art";
+let output = "art";
 
 const lookup = {
   x: (s, { x }) => [x * RATIO, ...s],
@@ -101,8 +103,20 @@ function _eval(expr, x, y, t, i) {
   }, []);
 }
 
+const video = document.createElement("video");
+navigator.mediaDevices.getUserMedia({ video: {
+  facingMode: "environment",
+} }).then((stream) => {
+  video.srcObject = stream;
+  video.setAttribute("playsinline", true);
+  video.play();
+  requestAnimationFrame(render);
+});
+
+let lastLocation = null;
+
 function render(t) {
-  if (renderer === "art") {
+  if (output === "art") {
     for (let i = 0; i < SIZE; i++) {
       for (let j = 0; j < SIZE; j++) {
         const [value] = _eval(data.expr, i, j, t, i * SIZE + j);
@@ -116,11 +130,42 @@ function render(t) {
         );
       }
     }
-  } else if (renderer === "qrcode") {
-    QRCode.toCanvas(canvas, data.expr, {
-      margin: 0,
+  } else if (output === "qrcode") {
+    QRCode.toCanvas(artCanvas, data.expr, {
+      margin: 5,
       width: CANVAS_SIZE,
     });
+  }
+
+  try {
+    const videoCanvas = document.querySelector(".video");
+    videoCanvas.width = video.videoWidth;
+    videoCanvas.height = video.videoHeight;
+    const videoContext = videoCanvas.getContext("2d");
+    videoContext.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+    const imageData = videoContext.getImageData(
+      0,
+      0,
+      video.videoWidth,
+      video.videoHeight
+    );
+    const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+    const location = code?.location || lastLocation;
+    lastLocation = location;
+
+    if (location) {
+      // draw artCanvas at location
+      videoContext.drawImage(
+        artCanvas,
+        location.topLeftCorner.x,
+        location.topLeftCorner.y,
+        location.topRightCorner.x - location.topLeftCorner.x,
+        location.bottomLeftCorner.y - location.topLeftCorner.y
+      );
+    }
+  } catch (e) {
+    console.log(e);
   }
 
   requestAnimationFrame(render);
@@ -131,8 +176,6 @@ input.addEventListener("input", () => {
   data.expr = input.value;
 });
 
-canvas.addEventListener("click", () => {
-  renderer = renderer === "art" ? "qrcode" : "art";
+artCanvas.addEventListener("click", () => {
+  output = output === "art" ? "qrcode" : "art";
 });
-
-requestAnimationFrame(render);
