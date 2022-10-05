@@ -29,9 +29,10 @@ canvas {
   font-family: monospace;
 }
 
-.video {
+video {
   position: absolute;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  top: 0;
 }
