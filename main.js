@@ -44,24 +44,29 @@ const regl = createREGL();
 const drawTriangle = regl({
   frag: `
     precision mediump float;
-    uniform vec4 color;
+    uniform sampler2D tex;
+    varying vec2 vUv;
     void main() {
-      gl_FragColor = color;
+      gl_FragColor = texture2D(tex, vUv);
     }`,
 
   vert: `
     precision mediump float;
     attribute vec2 position;
+    varying vec2 vUv;
+    attribute vec2 uv;
     void main() {
+      vUv = uv;
       gl_Position = vec4(position, 0, 1);
     }`,
 
   attributes: {
     position: regl.prop("points"),
+    uv: regl.prop("uv"),
   },
 
   uniforms: {
-    color: [1, 0, 0, 1]
+    tex: regl.prop("tex"),
   },
 
   count: 3
@@ -90,7 +95,7 @@ function render(t) {
       data.expr = code.data;
 
       data.points = [
-        [code.location.topLeftCorner.x / video.videoWidth, code.location.topLeftCorner.y / video.videoHeight],
+        [code.location.topLeftCorner.x  / video.videoWidth, code.location.topLeftCorner.y / video.videoHeight],
         [code.location.topRightCorner.x / video.videoWidth, code.location.topRightCorner.y / video.videoHeight],
         [code.location.bottomRightCorner.x / video.videoWidth, code.location.bottomRightCorner.y / video.videoHeight],
         [code.location.bottomLeftCorner.x / video.videoWidth, code.location.bottomLeftCorner.y / video.videoHeight],
@@ -100,12 +105,18 @@ function render(t) {
     console.log(e);
   }
 
+  const tex = regl.texture(artCanvas);
+
   // draw two triangles to form a quad
   drawTriangle({
     points: [data.points[0], data.points[1], data.points[2]],
+    uv: [[0, 0], [1, 0], [1, 1]],
+    tex,
   });
   drawTriangle({
     points: [data.points[0], data.points[2], data.points[3]],
+    uv: [[0, 0], [1, 1], [0, 1]],
+    tex,
   });
 
 
