@@ -72,6 +72,8 @@ const drawTriangle = regl({
   count: 3
 });
 
+let framesSinceLost = 0;
+const FRAMES_TO_CLEAR = 5;
 
 function render(t) {
   if (output === "art") {
@@ -82,6 +84,9 @@ function render(t) {
       width: CANVAS_SIZE,
     });
   }
+
+  const tex = regl.texture(artCanvas);
+
 
   try {
     // get the video frame
@@ -101,28 +106,31 @@ function render(t) {
         [code.location.bottomLeftCorner.x / video.videoWidth, code.location.bottomLeftCorner.y / video.videoHeight],
       ].map(([x, y]) => [x * 2 - 1, y * -2 + 1]);
 
-      const tex = regl.texture(artCanvas);
 
-      // draw two triangles to form a quad
-      drawTriangle({
-        points: [data.points[0], data.points[1], data.points[2]],
-        uv: [[0, 0], [1, 0], [1, 1]],
-        tex,
-      });
-      drawTriangle({
-        points: [data.points[0], data.points[2], data.points[3]],
-        uv: [[0, 0], [1, 1], [0, 1]],
-        tex,
-      });
+      framesSinceLost = 0;
     } else {
-      // clear gl
-      regl.clear({
-        color: [0, 0, 0, 0],
-        depth: 1,
-      });
+      framesSinceLost++;
     }
   } catch (e) {
     console.log(e);
+  }
+  // draw two triangles to form a quad
+  drawTriangle({
+    points: [data.points[0], data.points[1], data.points[2]],
+    uv: [[0, 0], [1, 0], [1, 1]],
+    tex,
+  });
+  drawTriangle({
+    points: [data.points[0], data.points[2], data.points[3]],
+    uv: [[0, 0], [1, 1], [0, 1]],
+    tex,
+  });
+  if (framesSinceLost > FRAMES_TO_CLEAR) {
+    // clear gl
+    regl.clear({
+      color: [0, 0, 0, 0],
+      depth: 1,
+    });
   }
 
 
