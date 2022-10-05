@@ -12,8 +12,10 @@
     "vite": "^3.1.0"
   },
   "dependencies": {
+    "jsqr": "^1.4.0",
     "petite-vue": "^0.4.1",
     "qr-scanner": "^1.4.1",
-    "qrcode": "^1.5.1"
+    "qrcode": "^1.5.1",
+    "regl": "^2.1.0"
   }
 }

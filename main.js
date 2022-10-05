@@ -1,37 +1,14 @@
 import "./style.css";
 import QRCode from "qrcode";
 
-import QrScanner from "qr-scanner";
+import jsQR from "jsqr";
+import createREGL from "regl";
 
-const canvas = document.querySelector(".canvas");
-const context = canvas.getContext("2d");
+import { draw } from "./draw"
+
+const artCanvas = document.querySelector(".canvas");
+const context = artCanvas.getContext("2d");
 const input = document.querySelector(".input");
-const video = document.querySelector("video");
-
-// define a 16 colors palette
-const pallet = [
-  "#1a1c2c",
-  "#5d275d",
-  "#b13e53",
-  "#ef7d57",
-  "#ffcd75",
-  "#a7f070",
-  "#38b764",
-  "#257179",
-  "#29366f",
-  "#3b5dc9",
-  "#41a6f6",
-  "#73eff7",
-  "#f4f4f4",
-  "#94b0c2",
-  "#566c86",
-  "#333c57",
-];
-
-const SIZE = 32;
-const CANVAS_SIZE = 256;
-const PIXEL_SIZE = CANVAS_SIZE / SIZE;
-const RATIO = 16 / SIZE;
 
 const url = new URL(window.location);
 let expr = url.pathname.slice(1, 24);
@@ -44,87 +21,110 @@ input.value = expr;
 
 const data = {
   expr,
+  points: [[1, 0], [0, 0], [1, 1], [0, 0]],
 };
 
-let renderer = "art";
+let output = "art";
 
-const lookup = {
-  x: (s, { x }) => [x * RATIO, ...s],
-  y: (s, { y }) => [y * RATIO, ...s],
-  t: (s, { t }) => [t / 256, ...s],
-  i: (s, { i }) => [i / RATIO, ...s],
-  r: (s) => [Math.random(), ...s],
+const video = document.querySelector("video");
+const videoCanvas = document.createElement("canvas");
+navigator.mediaDevices.getUserMedia({
+  video: {
+    facingMode: "environment",
+  }
+}).then((stream) => {
+  video.srcObject = stream;
+  video.setAttribute("playsinline", true);
+  video.play();
+  requestAnimationFrame(render);
+});
 
-  "+": ([a, b, ...s]) => [b + a, ...s],
-  "-": ([a, b, ...s]) => [b - a, ...s],
-  "*": ([a, b, ...s]) => [b * a, ...s],
-  "/": ([a, b, ...s]) => [b / a, ...s],
-  "%": ([a, b, ...s]) => [b % a, ...s],
-  "&": ([a, b, ...s]) => [b & a, ...s],
-  "|": ([a, b, ...s]) => [b | a, ...s],
-  "^": ([a, b, ...s]) => [b ^ a, ...s],
-  "=": ([a, b, ...s]) => [b === a, ...s],
-  "<": ([a, b, ...s]) => [b < a, ...s],
-  ">": ([a, b, ...s]) => [b > a, ...s],
-  "!": ([a, ...s]) => [!a, ...s],
-  "~": ([a, ...s]) => [~a, ...s],
-  "?": ([a, b, c, ...s]) => [a ? b : c, ...s],
+const regl = createREGL();
 
-  S: ([a, ...s]) => [Math.sin(a), ...s],
-  C: ([a, ...s]) => [Math.cos(a), ...s],
-  T: ([a, ...s]) => [Math.tan(a), ...s],
-  A: ([a, ...s]) => [Math.abs(a), ...s],
-  H: ([a, b, ...s]) => [Math.hypot(a, b), ...s],
-  F: ([a, ...s]) => [Math.floor(a), ...s],
-  R: ([a, ...s]) => [Math.sqrt(a), ...s],
-  D: ([a, ...s]) => [a, a, ...s],
+const drawTriangle = regl({
+  frag: `
+    precision mediump float;
+    uniform sampler2D tex;
+    varying vec2 vUv;
+    void main() {
+      gl_FragColor = texture2D(tex, vUv);
+    }`,
 
-  0: (s) => [0, ...s],
-  1: (s) => [1, ...s],
-  2: (s) => [2, ...s],
-  3: (s) => [3, ...s],
-  4: (s) => [4, ...s],
-  5: (s) => [5, ...s],
-  6: (s) => [6, ...s],
-  7: (s) => [7, ...s],
-  8: (s) => [8, ...s],
-  9: (s) => [9, ...s],
-  a: (s) => [10, ...s],
-  b: (s) => [11, ...s],
-  c: (s) => [12, ...s],
-  d: (s) => [13, ...s],
-  e: (s) => [14, ...s],
-  f: (s) => [15, ...s],
-  l: (s) => [16, ...s],
-};
+  vert: `
+    precision mediump float;
+    attribute vec2 position;
+    varying vec2 vUv;
+    attribute vec2 uv;
+    void main() {
+      vUv = uv;
+      gl_Position = vec4(position, 0, 1);
+    }`,
 
-function _eval(expr, x, y, t, i) {
-  return [...expr].reduce((stack, token) => {
-    return lookup[token]?.(stack, { x, y, t, i }) || stack;
-  }, []);
-}
+  attributes: {
+    position: regl.prop("points"),
+    uv: regl.prop("uv"),
+  },
+
+  uniforms: {
+    tex: regl.prop("tex"),
+  },
+
+  count: 3
+});
+
 
 function render(t) {
-  if (renderer === "art") {
-    for (let i = 0; i < SIZE; i++) {
-      for (let j = 0; j < SIZE; j++) {
-        const [value] = _eval(data.expr, i, j, t, i * SIZE + j);
-        const color = pallet[Math.floor(value) & 0xf];
-        context.fillStyle = color;
-        context.fillRect(
-          i * PIXEL_SIZE,
-          j * PIXEL_SIZE,
-          PIXEL_SIZE,
-          PIXEL_SIZE
-        );
-      }
-    }
-  } else if (renderer === "qrcode") {
-    QRCode.toCanvas(canvas, data.expr, {
-      margin: 0,
+  if (output === "art") {
+    draw(context, data.expr, t);
+  } else if (output === "qrcode") {
+    QRCode.toCanvas(artCanvas, data.expr, {
+      margin: 5,
       width: CANVAS_SIZE,
     });
   }
+
+  try {
+    // get the video frame
+    videoCanvas.width = video.videoWidth;
+    videoCanvas.height = video.videoHeight;
+    videoCanvas.getContext("2d").drawImage(video, 0, 0);
+    const imageData = videoCanvas.getContext("2d").getImageData(0, 0, video.videoWidth, video.videoHeight);
+    const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+    if (code) {
+      data.expr = code.data;
+
+      data.points = [
+        [code.location.topLeftCorner.x / video.videoWidth, code.location.topLeftCorner.y / video.videoHeight],
+        [code.location.topRightCorner.x / video.videoWidth, code.location.topRightCorner.y / video.videoHeight],
+        [code.location.bottomRightCorner.x / video.videoWidth, code.location.bottomRightCorner.y / video.videoHeight],
+        [code.location.bottomLeftCorner.x / video.videoWidth, code.location.bottomLeftCorner.y / video.videoHeight],
+      ].map(([x, y]) => [x * 2 - 1, y * -2 + 1]);
+
+      const tex = regl.texture(artCanvas);
+
+      // draw two triangles to form a quad
+      drawTriangle({
+        points: [data.points[0], data.points[1], data.points[2]],
+        uv: [[0, 0], [1, 0], [1, 1]],
+        tex,
+      });
+      drawTriangle({
+        points: [data.points[0], data.points[2], data.points[3]],
+        uv: [[0, 0], [1, 1], [0, 1]],
+        tex,
+      });
+    } else {
+      // clear gl
+      regl.clear({
+        color: [0, 0, 0, 0],
+        depth: 1,
+      });
+    }
+  } catch (e) {
+    console.log(e);
+  }
+
 
   requestAnimationFrame(render);
 }
@@ -134,38 +134,6 @@ input.addEventListener("input", () => {
   data.expr = input.value;
 });
 
-canvas.addEventListener("click", () => {
-  renderer = renderer === "art" ? "qrcode" : "art";
+artCanvas.addEventListener("click", () => {
+  output = output === "art" ? "qrcode" : "art";
 });
-
-const qrScanner = new QrScanner(
-  video,
-  ({ cornerPoints, data: expr }) => {
-    const { height, width } = video.getBoundingClientRect();
-    // position the canvas over the video
-    const [p1, p2, p3, p4] = cornerPoints.map(({ x, y }) => [width/2 - x, y - height/2]);
-    const [x1, y1] = p1;
-    const [x2, y2] = p2;
-    const [x3, y3] = p3;
-    const [x4, y4] = p4;
-    
-    canvas.style.transform = `matrix(${(x2 - x1) / CANVAS_SIZE}, ${(y2 - y1) / CANVAS_SIZE}, ${(x4 - x1) / CANVAS_SIZE}, ${(y4 - y1) / CANVAS_SIZE}, ${x1}, ${y1})`;
-    canvas.style.width = `${CANVAS_SIZE}px`;
-    canvas.style.height = `${CANVAS_SIZE}px`;
-    
-    // update expression
-    data.expr = expr;
-  },
-  {
-    returnDetailedScanResult: true,
-  }
-);
-
-video.addEventListener("click", () => {
-  qrScanner.stop();
-  video.style.display = "none";
-});
-
-qrScanner.start();
-
-requestAnimationFrame(render);
