@@ -1,7 +1,7 @@
 import "./style.css";
 
 import "aframe"
-import "@ar-js-org/ar.js/aframe/build/aframe-ar";
+import 'mind-ar/dist/mindar-image-aframe.prod.js';
 
 import { draw } from "./draw"; 
 
@@ -20,21 +20,20 @@ AFRAME.registerComponent('canvas-updater', {
 
 const main = document.querySelector("body");
 main.innerHTML = `
-        <a-scene embedded arjs='sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;'>
-          <a-assets position="0 0.5 0">
-            <canvas id="canvas" width="256" height="256"></canvas>
-          </a-assets>
+<a-scene mindar-image="imageTargetSrc: targets.mind" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false">
+  <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+  <a-assets position="0 0.1 0">
+    <canvas id="canvas" width="256" height="256"></canvas>
+  </a-assets>
 
-          <a-marker type='barcode' value='16'>
-            <a-entity geometry='primitive: plane'
-                      material='src: #canvas'
-                      position='0 0 0'
-                      rotation='-90 0 0'
-                      canvas-updater>
-            </a-entity>
-          </a-marker>
-          <a-entity camera></a-entity>
-        </a-scene>
+  <a-entity mindar-image-target="targetIndex: 0">
+    <a-entity geometry='primitive: plane'
+              material='src: #canvas'
+              position='0 0 0'
+              rotation='0 0 0'
+              canvas-updater>
+  </a-entity>
+</a-scene>
 `
 
 const canvas = document.querySelector("#canvas");
