@@ -2,6 +2,7 @@ import "./style.css";
 
 import "aframe"
 import 'mind-ar/dist/mindar-image-aframe.prod.js';
+import jsQR from "jsqr";
 
 import { draw } from "./draw"; 
 
@@ -39,11 +40,52 @@ main.innerHTML = `
 const canvas = document.querySelector("#canvas");
 const ctx = canvas.getContext("2d");
 
-const expr = "xy+t+";
+const url = new URL(window.location);
+let expr = url.pathname.slice(1, 24);
+if (!expr) {
+  window.history.pushState({}, "", "/xy+");
+  expr = "xy+";
+}
+
+let video = null;
+const videoCanvas = document.createElement("canvas");
+
+// poll for video
+function pollVideo() {
+  if (video) {
+    return;
+  }
+  video = document.querySelector("video");
+  if (video) {
+    console.log("video found");
+  } else {
+    setTimeout(pollVideo, 100);
+  }
+}
 
 function render(t) {
   draw(ctx, expr, t);
+
+  if (video) {
+    try {
+      // get the video frame
+      videoCanvas.width = video.videoWidth;
+      videoCanvas.height = video.videoHeight;
+      videoCanvas.getContext("2d").drawImage(video, 0, 0);
+      const imageData = videoCanvas.getContext("2d").getImageData(0, 0, video.videoWidth, video.videoHeight);
+      const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+      if (code) {
+        expr = code.data;
+      }
+    } catch (e) {
+      console.log(e);
+    }
+  }
+
   requestAnimationFrame(render);
 }
 
 requestAnimationFrame(render);
+
+pollVideo();
