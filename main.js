@@ -3,7 +3,7 @@ import "./style.css";
 import "aframe"
 import "@ar-js-org/ar.js/aframe/build/aframe-ar";
 
-import { draw } from "./draw";
+import { draw, compile } from "./draw";
 import jsQR from "jsqr";
 
 AFRAME.registerComponent('canvas-updater', {
@@ -31,7 +31,7 @@ main.innerHTML = `
                       material='src: #canvas'
                       position='0 0 0'
                       rotation='-90 0 0'
-                      scale='3 3 3'
+                      scale='5 5 5'
                       canvas-updater>
             </a-entity>
           </a-marker>
@@ -53,7 +53,8 @@ let video = null;
 const videoCanvas = document.createElement("canvas");
 
 function render(t) {
-  draw(ctx, expr, t);
+  const _eval = compile(expr);
+  draw(ctx, _eval, t);
 
   if (video) {
     try {
@@ -65,7 +66,8 @@ function render(t) {
       const code = jsQR(imageData.data, imageData.width, imageData.height);
 
       if (code) {
-        expr = code.data;
+        const [newExpr] = code.data.split("/").slice(-1);
+        expr = newExpr;
       }
     } catch (e) {
       console.log(e);
